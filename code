@@ -1,181 +1,155 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movie Recommender Chatbot</title>
-    <style>
-        /* Global styles */
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f4f4f9;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movie Recommender</title>
 
-        /* Main container */
-        .chat-container {
-            background-color: #fff;
-            width: 450px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-        }
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: #020617;
+    color: white;
+    overflow-x: hidden;
+}
 
-        /* Header for the movie recommender */
-        .header {
-            background-color: #007bff;
-            color: white;
-            padding: 15px;
-            font-size: 18px;
-            font-weight: bold;
-            text-align: center;
-            border-radius: 10px;
-            margin-bottom: 15px;
-        }
+/* Falling background */
+.bg {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -1;
+}
 
-        /* Chat box */
-        .chat-box {
-            width: 100%;
-            height: 250px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 10px;
-            background-color: #f9f9f9;
-            margin-bottom: 20px;
-        }
+.bg span {
+    position: absolute;
+    display: block;
+    width: 40px;
+    height: 60px;
+    background: rgba(255,255,255,0.05);
+    animation: fall linear infinite;
+}
 
-        /* Input and button */
-        .input-container {
-            display: flex;
-            align-items: center;
-        }
+@keyframes fall {
+    0% { transform: translateY(-100px); }
+    100% { transform: translateY(100vh); }
+}
 
-        #user-input {
-            width: 80%;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-            margin-right: 10px;
-        }
+.header {
+    text-align: center;
+    padding: 20px;
+    font-size: 32px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
 
-        #send-button {
-            padding: 10px 15px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-        }
+.search-box {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
 
-        #send-button:hover {
-            background-color: #218838;
-        }
+input {
+    padding: 12px;
+    width: 300px;
+    border-radius: 5px;
+    border: none;
+}
 
-        /* Message styles */
-        .message {
-            margin-bottom: 10px;
-        }
+button {
+    padding: 12px;
+    margin-left: 10px;
+    background: #22c55e;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    color: white;
+}
 
-        .message.user {
-            color: #1a73e8;
-            font-weight: bold;
-        }
+.movies {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
 
-        .message.bot {
-            color: #333;
-            font-style: italic;
-        }
-    </style>
+.card {
+    background: #0f172a;
+    border-radius: 10px;
+    overflow: hidden;
+    transition: transform 0.3s;
+}
+
+.card:hover {
+    transform: scale(1.08);
+}
+
+.card img {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+}
+
+.title {
+    padding: 10px;
+    text-align: center;
+    font-size: 14px;
+}
+</style>
 </head>
+
 <body>
-    <div class="chat-container">
-        <!-- Movie Recommender Header -->
-        <div class="header">
-            Movie Recommender Chatbot
-        </div>
 
-        <!-- Chat Box -->
-        <div class="chat-box" id="chat-box">
-            <p class="message bot">Bot: Hello! I can help you find some movies. Tell me your mood, favorite actor, or genre.</p>
-        </div>
+<div class="bg" id="bg"></div>
 
-        <!-- Input Field & Send Button -->
-        <div class="input-container">
-            <input type="text" id="user-input" placeholder="Type your mood, actor, or genre..." />
-            <button id="send-button">Send</button>
-        </div>
-    </div>
+<div class="header">🎬 Movie Recommender</div>
 
-    <script>
-        // Set your OMDb API key here
-        const API_KEY = "1752279";  // Your actual OMDb API key
+<div class="search-box">
+    <input id="search" placeholder="Search movie...">
+    <button onclick="searchMovie()">Search</button>
+</div>
 
-        // Function to fetch movie recommendations from OMDb API
-        async function getMovieRecommendations(query) {
-            const url = `http://www.omdbapi.com/?apikey=${API_KEY}&s=${query}&type=movie`;
-            const response = await fetch(url);
-            const data = await response.json();
+<div class="movies" id="movies"></div>
 
-            if (data.Response === "True") {
-                return data.Search.map(movie => movie.Title);
-            } else {
-                return null;
-            }
-        }
+<script>
+const API_KEY = "1752279";
 
-        // Function to handle sending the user input and displaying the chatbot's response
-        async function handleUserInput() {
-            const userInput = document.getElementById("user-input").value.trim();
-            if (userInput === "") return;
+/* Background animation */
+for (let i = 0; i < 30; i++) {
+    let span = document.createElement("span");
+    span.style.left = Math.random() * 100 + "%";
+    span.style.animationDuration = (3 + Math.random() * 5) + "s";
+    span.style.opacity = Math.random();
+    document.getElementById("bg").appendChild(span);
+}
 
-            // Display user input in chat box
-            appendMessage("You: " + userInput, "user");
+/* Movie search */
+async function searchMovie() {
+    const query = document.getElementById("search").value.trim();
+    if (!query) return;
 
-            // Clear input field
-            document.getElementById("user-input").value = "";
+    const res = await fetch(`https://www.omdbapi.com/?apikey=${API_KEY}&s=${encodeURIComponent(query)}`);
+    const data = await res.json();
 
-            // Get movie recommendations
-            const movies = await getMovieRecommendations(userInput);
+    const container = document.getElementById("movies");
+    container.innerHTML = "";
 
-            // Display bot's response
-            if (movies) {
-                appendMessage("Bot: Here are some movie recommendations:", "bot");
-                movies.forEach(movie => appendMessage(`- ${movie}`, "bot"));
-            } else {
-                appendMessage("Bot: Sorry, I couldn't find any recommendations.", "bot");
-            }
-        }
-
-        // Function to append messages to the chat box
-        function appendMessage(message, sender) {
-            const chatBox = document.getElementById("chat-box");
-            const messageElement = document.createElement("p");
-            messageElement.textContent = message;
-            messageElement.classList.add("message", sender);
-            chatBox.appendChild(messageElement);
-
-            // Scroll to the bottom
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        // Add event listener to send button
-        document.getElementById("send-button").addEventListener("click", handleUserInput);
-
-        // Optional: Add event listener for "Enter" key to send input
-        document.getElementById("user-input").addEventListener("keypress", function(event) {
-            if (event.key === "Enter") {
-                handleUserInput();
-            }
+    if (data.Response === "True") {
+        data.Search.forEach(movie => {
+            container.innerHTML += `
+                <div class="card">
+                    <img src="${movie.Poster !== 'N/A' ? movie.Poster : 'https://via.placeholder.com/300'}">
+                    <div class="title">${movie.Title}</div>
+                </div>
+            `;
         });
-    </script>
+    } else {
+        container.innerHTML = "<p style='text-align:center'>No results found</p>";
+    }
+}
+</script>
+
 </body>
 </html>
